@@ -22,16 +22,19 @@ from pathlib import Path
 import faiss
 import numpy as np
 import pandas as pd
-from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
+
+# Allow `python scripts/prepare_and_index.py` without installing the app package
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.embedder import FastEmbedEncoder  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CSV = ROOT / "data" / "raw" / "spotify_millsongdata.csv"
 DEFAULT_OUT = ROOT / "artifacts"
 
-# Dense retrieval model: maps text -> 384-D semantic vector
+# Same MiniLM family used at query time (ONNX via fastembed — low RAM on Render)
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-EMBED_DIM = 384  # fixed output size of MiniLM
+EMBED_DIM = 384
 
 # Split lyrics on sentence endings (. ! ?) OR newline breaks (common in lyric text)
 SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
@@ -119,22 +122,21 @@ def build_chunk_table(df: pd.DataFrame, min_chars: int) -> pd.DataFrame:
     return chunks
 
 
-def embed_texts(model: SentenceTransformer, texts: list[str], batch_size: int) -> np.ndarray:
+def embed_texts(model: FastEmbedEncoder, texts: list[str], batch_size: int) -> np.ndarray:
     """
     Convert text chunks → float32 embedding matrix of shape (N, 384).
 
-    batch_size: how many chunks per model forward pass (speed/memory only; not quality).
-    normalize_embeddings=True: each vector has length 1, so later
-      inner_product(a, b) == cosine_similarity(a, b)
+    Uses ONNX MiniLM (fastembed). Vectors are L2-normalized so
+    FAISS IndexFlatIP == cosine similarity.
     """
-    vectors = model.encode(
-        texts,
-        batch_size=batch_size,
-        show_progress_bar=True,
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-    )
-    return np.asarray(vectors, dtype=np.float32)
+    # Encode in batches with a progress bar (fastembed yields per batch internally)
+    out: list[np.ndarray] = []
+    for i in tqdm(range(0, len(texts), batch_size), desc="Embedding chunks"):
+        batch = texts[i : i + batch_size]
+        out.append(model.encode(batch, batch_size=batch_size))
+    if not out:
+        return np.zeros((0, EMBED_DIM), dtype=np.float32)
+    return np.vstack(out).astype(np.float32)
 
 
 def build_faiss_index(embeddings: np.ndarray) -> faiss.Index:
@@ -175,7 +177,7 @@ def parse_args() -> argparse.Namespace:
         help="Chunks per embedding batch (larger = faster, more RAM)",
     )
     p.add_argument("--min-chunk-chars", type=int, default=25, help="Drop/merge chunks shorter than this")
-    p.add_argument("--model", type=str, default=MODEL_NAME, help="Sentence Transformer model name")
+    p.add_argument("--model", type=str, default=MODEL_NAME, help="MiniLM model id for fastembed")
     return p.parse_args()
 
 
@@ -219,18 +221,14 @@ def main() -> int:
     chunks.to_parquet(chunks_path, index=False)
     print(f"Saved {len(chunks)} chunks -> {chunks_path}")
 
-    # --- 4) Load embedding model ---
-    print(f"Loading model: {args.model}")
-    model = SentenceTransformer(args.model)
-    dim = (
-        model.get_embedding_dimension()
-        if hasattr(model, "get_embedding_dimension")
-        else model.get_sentence_embedding_dimension()
-    )
+    # --- 4) Load ONNX embedding model (fastembed) ---
+    print(f"Loading ONNX model via fastembed: {args.model}")
+    model = FastEmbedEncoder(args.model)
+    dim = model.dim
     if dim != EMBED_DIM and args.model == MODEL_NAME:
         print(f"Warning: expected dim {EMBED_DIM}, got {dim}")
 
-    # --- 5) Embed all chunks (slowest step) ---
+    # --- 5) Embed all chunks ---
     print("Embedding chunks ...")
     embeddings = embed_texts(model, chunks["chunk_text"].tolist(), batch_size=args.batch_size)
     emb_path = args.out_dir / "embeddings.npy"
@@ -247,6 +245,7 @@ def main() -> int:
     # --- 7) Save design choices for UI / evaluation ---
     config = {
         "model_name": args.model,
+        "embedding_backend": "fastembed-onnx",
         "embedding_dim": int(embeddings.shape[1]),
         "similarity": "cosine",
         "implementation": "L2-normalize embeddings + FAISS IndexFlatIP (dot product == cosine)",

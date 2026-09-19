@@ -45,26 +45,19 @@ Open http://127.0.0.1:8000
 
 ## Deploy on Render (free)
 
-This repo includes `render.yaml`. Deploy-sized artifacts (`~2500` songs) are committed so the service does not rebuild the index on Render.
+Render free instances only have **512MB RAM**. PyTorch + Sentence-Transformers will OOM.
+This project uses **fastembed (ONNX MiniLM)** instead, plus a smaller committed index (~800 songs).
 
-1. Push this `week2-exercise` folder to a **GitHub** repository.
-2. Go to [https://dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint**.
-3. Connect the GitHub repo and apply `render.yaml`.
-4. Wait for build (installs PyTorch CPU + Sentence Transformers; first build is slow).
-5. Open the `*.onrender.com` URL.
+1. Push this repo to GitHub (include updated `artifacts/`).
+2. Render → **Manual Deploy** / Blueprint with `render.yaml`.
+3. Health check path: `/health` (does not load the model).
+4. First real page load downloads the ONNX model once (cold start).
 
-**Notes**
-- Free tier **spins down** after idle; first request can take 30–60s (cold start + model load).
-- Free RAM is limited; keep `--max-songs` around 2–3k on free plans.
-- `artifacts/embeddings.npy` is gitignored (not needed at runtime; FAISS index is enough).
+If it still OOMs: rebuild even smaller locally and redeploy:
 
-Manual service settings (if not using Blueprint):
-
-| Setting | Value |
-|---|---|
-| Runtime | Python 3.11 |
-| Build | `pip install -r requirements.txt` |
-| Start | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+```bash
+python scripts/prepare_and_index.py --max-songs 500
+```
 
 ## Pipeline
 

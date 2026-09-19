@@ -1,11 +1,9 @@
 """
 FastAPI web UI for Spotify vibe / semantic lyric search.
 
-Routes:
-  GET  /        → search form (empty results)
-  POST /search  → run VibeSearchEngine and render ranked songs
-
-The heavy model + FAISS index are loaded once at startup (not per request).
+Memory notes (Render free 512MB):
+  - Do NOT load the engine at import/startup (health check must bind port first)
+  - Use ONNX fastembed instead of PyTorch (see app/embedder.py)
 """
 
 from __future__ import annotations
@@ -13,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app.search import VibeSearchEngine
@@ -23,29 +21,48 @@ TEMPLATES = Jinja2Templates(directory=str(ROOT / "app" / "templates"))
 
 app = FastAPI(title="Spotify Vibe Search", version="1.0.0")
 
-# Shared engine instance (model + FAISS index). Filled in on startup.
-engine: VibeSearchEngine | None = None
+# Lazy singleton — loaded on first real page/search, not during cold health checks
+_engine: VibeSearchEngine | None = None
+_engine_error: str | None = None
 
 
-@app.on_event("startup")
-def load_engine() -> None:
-    """Load MiniLM + FAISS artifacts once when the server starts."""
-    global engine
-    engine = VibeSearchEngine()
+def get_engine() -> VibeSearchEngine:
+    global _engine, _engine_error
+    if _engine is not None:
+        return _engine
+    if _engine_error is not None:
+        raise RuntimeError(_engine_error)
+    try:
+        _engine = VibeSearchEngine()
+        return _engine
+    except Exception as exc:  # noqa: BLE001
+        _engine_error = str(exc)
+        raise
+
+
+@app.get("/health")
+def health() -> JSONResponse:
+    """Lightweight probe for Render — does not load MiniLM/FAISS."""
+    return JSONResponse({"status": "ok"})
 
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request) -> HTMLResponse:
-    """Show the landing page with the vibe query text box."""
-    cfg = engine.config if engine else {}
+    cfg = {}
+    error = None
+    try:
+        cfg = get_engine().config
+    except Exception as exc:  # noqa: BLE001
+        error = f"Engine failed to load (often RAM on free tier): {exc}"
+
     return TEMPLATES.TemplateResponse(
         request,
         "index.html",
         {
             "results": None,
             "query": "",
-            "error": None,
-            "config": cfg,  # shows dim / metric / index type in the page footer
+            "error": error,
+            "config": cfg,
             "top_k": 5,
         },
     )
@@ -54,21 +71,19 @@ def home(request: Request) -> HTMLResponse:
 @app.post("/search", response_class=HTMLResponse)
 def search(
     request: Request,
-    q: str = Form(...),  # vibe text from the HTML form
-    top_k: int = Form(10),  # how many songs to display
+    q: str = Form(...),
+    top_k: int = Form(5),
 ) -> HTMLResponse:
-    """
-    Handle search form submit:
-      embed query → FAISS chunk search → max-pool to songs → render HTML.
-    """
-    assert engine is not None
     query = q.strip()
     error = None
     results = []
+    cfg = {}
     try:
+        engine = get_engine()
+        cfg = engine.config
         top_k = max(1, min(int(top_k), 50))
         results = engine.search(query, top_k=top_k)
-    except Exception as exc:  # noqa: BLE001 - show in UI for coursework demo
+    except Exception as exc:  # noqa: BLE001
         error = str(exc)
 
     return TEMPLATES.TemplateResponse(
@@ -78,7 +93,7 @@ def search(
             "results": results,
             "query": query,
             "error": error,
-            "config": engine.config,
+            "config": cfg,
             "top_k": top_k,
         },
     )
