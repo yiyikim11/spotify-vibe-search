@@ -1,0 +1,19 @@
+# Local / secrets
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+
+# Raw dataset (large); download separately for local builds
+data/raw/*.csv
+
+# Huge matrix not needed at runtime (FAISS index is enough)
+artifacts/embeddings.npy
+
+# Optional local eval noise
+artifacts/eval_report.json
+
+# OS
+.DS_Store
+Thumbs.db

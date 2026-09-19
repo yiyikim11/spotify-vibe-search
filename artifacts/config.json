@@ -1,0 +1,13 @@
+{
+  "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+  "embedding_dim": 384,
+  "similarity": "cosine",
+  "implementation": "L2-normalize embeddings + FAISS IndexFlatIP (dot product == cosine)",
+  "index_type": "IndexFlatIP",
+  "num_songs": 2500,
+  "num_chunks": 53331,
+  "max_songs_used": 2500,
+  "min_chunk_chars": 25,
+  "chunking": "sentence/line split + short-fragment merge + chorus dedupe",
+  "song_aggregation": "max chunk score per song"
+}

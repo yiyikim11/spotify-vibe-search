@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spotify Vibe Search</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #121212;
+            --surface: #18181b;
+            --card: #1e1e21;
+            --card-hover: #252529;
+            --text: #ffffff;
+            --muted: #a1a1aa;
+            --muted-2: #71717a;
+            --line: #2a2a2e;
+            --green: #1ed760;
+            --green-soft: #55d388;
+            --green-bg: rgba(30, 215, 96, 0.12);
+            --green-border: rgba(85, 211, 136, 0.55);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "DM Sans", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        main {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 2rem 1.25rem 3.5rem;
+        }
+
+        .brand {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--green-soft);
+            margin: 0 0 0.5rem;
+        }
+
+        h1 {
+            margin: 0 0 0.35rem;
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .sub {
+            margin: 0 0 1.75rem;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.45;
+        }
+
+        /* —— Search —— */
+        .search-form {
+            margin-bottom: 1.25rem;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 0.7rem 1rem;
+            margin-bottom: 0.9rem;
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--green-border);
+            box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.12);
+        }
+
+        .search-bar svg {
+            flex-shrink: 0;
+            color: var(--muted-2);
+        }
+
+        .search-bar input {
+            flex: 1;
+            border: 0;
+            outline: none;
+            background: transparent;
+            color: var(--text);
+            font: inherit;
+            font-size: 1rem;
+        }
+
+        .search-bar input::placeholder {
+            color: var(--muted-2);
+        }
+
+        .clear-input {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--muted-2);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .clear-input:hover {
+            background: #2a2a2e;
+            color: var(--text);
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .show-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .show-label {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .show-btns {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .show-btns label {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .show-btns input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .show-btns span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.1rem;
+            height: 2.1rem;
+            padding: 0 0.45rem;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: var(--muted-2);
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: 0.15s ease;
+        }
+
+        .show-btns input:checked+span {
+            border-color: var(--green-soft);
+            color: var(--green-soft);
+            background: var(--green-bg);
+        }
+
+        .show-btns label:hover span {
+            border-color: #3f3f46;
+            color: var(--muted);
+        }
+
+        .btn-search {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            border: 0;
+            border-radius: 999px;
+            background: var(--green);
+            color: #04140a;
+            font: inherit;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 0.7rem 1.25rem;
+            cursor: pointer;
+        }
+
+        .btn-search:hover {
+            background: var(--green-soft);
+        }
+
+        /* —— Results header —— */
+        .results-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 1.35rem 0 0.85rem;
+            gap: 1rem;
+        }
+
+        .results-bar p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .results-bar strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .clear-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .clear-link:hover {
+            color: var(--text);
+        }
+
+        .error {
+            background: #3a1d24;
+            border: 1px solid #7a3040;
+            color: #ffd0d8;
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 1.5rem 0;
+        }
+
+        .meta {
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: var(--muted-2);
+            line-height: 1.5;
+        }
+
+        /* —— Cards —— */
+        .results {
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .card {
+            display: grid;
+            grid-template-columns: 72px 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            background: var(--card);
+            border: 1px solid transparent;
+            border-radius: 14px;
+            padding: 0.85rem 1rem;
+            transition: background 0.15s ease;
+        }
+
+        .card:hover {
+            background: var(--card-hover);
+        }
+
+        .thumb {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            flex-shrink: 0;
+        }
+
+        .thumb img,
+        .thumb .fallback {
+            width: 72px;
+            height: 72px;
+            border-radius: 10px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .thumb .fallback {
+            background: linear-gradient(145deg, #3b4a6b, #1a1a1e);
+            display: grid;
+            place-items: center;
+            color: rgba(255, 255, 255, 0.55);
+        }
+
+        .thumb .fallback.alt {
+            background: linear-gradient(145deg, #6b4a3b, #1a1a1e);
+        }
+
+        .rank {
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            background: #0a0a0a;
+            border: 1px solid #3f3f46;
+            color: var(--text);
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: grid;
+            place-items: center;
+            z-index: 1;
+        }
+
+        .card-main {
+            min-width: 0;
+        }
+
+        .title-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.45rem 0.55rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .title-row h2 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .match {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0.12rem 0.55rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--green-soft);
+            background: var(--green-bg);
+            border: 1px solid rgba(85, 211, 136, 0.25);
+            white-space: nowrap;
+        }
+
+        .artist {
+            margin: 0 0 0.35rem;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .excerpt {
+            margin: 0;
+            color: var(--muted-2);
+            font-size: 0.88rem;
+            font-style: italic;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .yt-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-shrink: 0;
+            text-decoration: none;
+            color: var(--text);
+            background: #2a2a2e;
+            border: 1px solid #3f3f46;
+            border-radius: 10px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .yt-btn:hover {
+            background: #323238;
+            border-color: #52525b;
+        }
+
+        .yt-btn svg {
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 640px) {
+            .card {
+                grid-template-columns: 64px 1fr;
+                grid-template-rows: auto auto;
+            }
+
+            .yt-btn {
+                grid-column: 1 / -1;
+                justify-content: center;
+            }
+
+            .thumb,
+            .thumb img,
+            .thumb .fallback {
+                width: 64px;
+                height: 64px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <p class="brand">Spotify Vibe Search</p>
+        <h1>Find songs by mood</h1>
+        <p class="sub">Describe a vibe in plain language, we’ll match lyric meaning, not just keywords.</p>
+
+        <form class="search-form" method="post" action="/search" id="searchForm">
+            <div class="search-bar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" />
+                    <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+                <input id="q" name="q" type="text" required autocomplete="off"
+                    placeholder="Search songs, artists, or vibes…" value="{{ query or '' }}" />
+                {% if query %}
+                <a class="clear-input" href="/" title="Clear" aria-label="Clear query">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="controls">
+                <div class="show-group">
+                    <span class="show-label">Show</span>
+                    <div class="show-btns">
+                        {% set k = (top_k or 5)|int %}
+                        <label>
+                            <input type="radio" name="top_k" value="3" {% if k==3 %}checked{% endif %} />
+                            <span>3</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="top_k" value="5" {% if k==5 %}checked{% endif %} />
+                            <span>5</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="top_k" value="10" {% if k==10 %}checked{% endif %} />
+                            <span>10</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn-search" type="submit">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor"
+                            stroke-width="2.2" />
+                        <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+                    </svg>
+                    Search
+                </button>
+            </div>
+        </form>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        {% if results is not none %}
+        <div class="results-bar">
+            <p>
+                {% if results|length == 0 %}
+                No songs matching <strong>'{{ query }}'</strong>
+                {% else %}
+                {{ results|length }} song{% if results|length != 1 %}s{% endif %} matching <strong>'{{ query
+                    }}'</strong>
+                {% endif %}
+            </p>
+            <a class="clear-link" href="/">Clear</a>
+        </div>
+
+        {% if results|length == 0 %}
+        <p class="empty">Try a richer vibe description.</p>
+        {% else %}
+        <div class="results">
+            {% for hit in results %}
+            <article class="card">
+                <div class="thumb">
+                    <span class="rank">{{ loop.index }}</span>
+                    {% if hit.image_url %}
+                    <img src="{{ hit.image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer" />
+                    {% else %}
+                    <div class="fallback{% if loop.index is even %} alt{% endif %}" aria-hidden="true">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z" />
+                        </svg>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-main">
+                    <div class="title-row">
+                        <h2>{{ hit.song }}</h2>
+                        <span class="match">{{ (hit.score * 100)|round|int }}% match</span>
+                    </div>
+                    <p class="artist">{{ hit.artist }}</p>
+                    <p class="excerpt">“{{ hit.excerpt }}”</p>
+                </div>
+
+                {% if hit.youtube_url %}
+                <a class="yt-btn" href="{{ hit.youtube_url }}" target="_blank" rel="noopener noreferrer">
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                        <path fill="#FF0033"
+                            d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8ZM9.75 15.5v-7l6.2 3.5-6.2 3.5Z" />
+                    </svg>
+                    Listen on YouTube →
+                </a>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {% if config %}
+        <p class="meta">
+            {{ config.model_name }} · dim={{ config.embedding_dim }} · {{ config.similarity }} ·
+            {{ config.index_type }} · {{ config.num_songs }} songs · {{ config.num_chunks }} chunks
+        </p>
+        {% endif %}
+    </main>
+</body>
+
+</html>
