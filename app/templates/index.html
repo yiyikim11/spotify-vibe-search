@@ -538,6 +538,7 @@
         <p class="meta">
             {{ config.model_name }} · dim={{ config.embedding_dim }} · {{ config.similarity }} ·
             {{ config.index_type }} · {{ config.num_songs }} songs · {{ config.num_chunks }} chunks
+            {% if config.query_embedding_backend %} · query={{ config.query_embedding_backend }}{% endif %}
         </p>
         {% endif %}
     </main>
