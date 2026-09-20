@@ -2,8 +2,10 @@
 FastAPI web UI for Spotify vibe / semantic lyric search.
 
 Memory notes (Render free 512MB):
-  - Do NOT load the engine at import/startup (health check must bind port first)
-  - Use ONNX fastembed instead of PyTorch (see app/embedder.py)
+  - Lyrics are pre-embedded offline into FAISS (not recomputed on Render)
+  - Query embedding uses Hugging Face API (EMBED_BACKEND=remote + HF_TOKEN)
+  - No local MiniLM / PyTorch / ONNX weights loaded in the web process
+  - /health does not load FAISS or call HF
 """
 
 from __future__ import annotations

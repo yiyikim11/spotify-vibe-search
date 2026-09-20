@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 .env
 .env.*
+!.env.example
 
 # Raw dataset (large); download separately for local builds
 data/raw/*.csv

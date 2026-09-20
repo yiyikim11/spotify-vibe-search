@@ -1,0 +1,4 @@
+# Local only — build FAISS index on your machine (ONNX MiniLM via fastembed)
+-r requirements.txt
+tqdm>=4.66
+fastembed>=0.4.0,<1

@@ -2,8 +2,8 @@
 Online search engine for FastAPI.
 
 Pipeline for one user query:
-  1) embed vibe text with ONNX MiniLM (fastembed) — low RAM for Render free tier
-  2) FAISS Flat IP → nearest lyric chunks (cosine after L2-normalize)
+  1) embed vibe text via remote HF API (Render) or local ONNX (laptop)
+  2) FAISS Flat IP → nearest lyric chunks (lyrics already embedded offline)
   3) max-pool chunk hits by song_id
   4) enrich top songs with cover / YouTube (display only)
 """
@@ -18,7 +18,7 @@ import faiss
 import numpy as np
 import pandas as pd
 
-from app.embedder import DEFAULT_MODEL, get_encoder
+from app.embedder import DEFAULT_MODEL, get_encoder, resolve_backend
 from app.media import MediaEnricher
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,7 +38,7 @@ class SearchHit:
 
 
 class VibeSearchEngine:
-    """Loads FAISS + chunk metadata; encoder is a shared ONNX singleton."""
+    """Loads FAISS + chunk metadata only; query embedding can be remote (low RAM)."""
 
     def __init__(self, artifacts_dir: Path = ARTIFACTS):
         self.artifacts_dir = Path(artifacts_dir)
@@ -55,11 +55,14 @@ class VibeSearchEngine:
         self.config = json.loads(config_path.read_text(encoding="utf-8"))
         model_name = self.config.get("model_name", DEFAULT_MODEL)
 
-        # ONNX encoder (not PyTorch) — required to fit ~512MB Render free RAM
+        # Remote HF on Render (no MiniLM weights in process) or local ONNX for dev
         self.encoder = get_encoder(model_name)
+        self.config = {
+            **self.config,
+            "query_embedding_backend": getattr(self.encoder, "backend", resolve_backend()),
+        }
 
         self.index = faiss.read_index(str(index_path))
-        # Only columns needed at search time (smaller RSS than full frame use)
         self.chunks = pd.read_parquet(
             chunks_path,
             columns=["song_id", "artist", "song", "link", "chunk_text"],

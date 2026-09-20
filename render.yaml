@@ -1,4 +1,7 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
+# Lyrics are pre-embedded offline. Render only:
+#   - loads FAISS + chunk metadata
+#   - embeds each user QUERY via Hugging Face Inference API (HF_TOKEN)
 services:
   - type: web
     name: spotify-vibe-search
@@ -14,6 +17,11 @@ services:
         value: "3.11.9"
       - key: WEB_CONCURRENCY
         value: "1"
+      - key: EMBED_BACKEND
+        value: "remote"
+      # Set this in the Render dashboard (secret) — free token from huggingface.co/settings/tokens
+      - key: HF_TOKEN
+        sync: false
       - key: OMP_NUM_THREADS
         value: "1"
       - key: OPENBLAS_NUM_THREADS
@@ -22,7 +30,5 @@ services:
         value: "1"
       - key: MALLOC_ARENA_MAX
         value: "2"
-      - key: TOKENIZERS_PARALLELISM
-        value: "false"
       - key: HF_HUB_DISABLE_TELEMETRY
         value: "1"

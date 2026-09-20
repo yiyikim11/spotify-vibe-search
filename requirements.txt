@@ -1,4 +1,4 @@
-# Lightweight stack for Render free (512MB) — NO PyTorch
+# Render runtime — FAISS + remote query embeddings (NO local MiniLM / torch / onnx)
 fastapi>=0.110,<1
 uvicorn[standard]>=0.27,<1
 jinja2>=3.1
@@ -6,6 +6,5 @@ python-multipart>=0.0.9
 pandas>=2.0,<3
 numpy>=1.24,<3
 pyarrow>=14.0
-tqdm>=4.66
 faiss-cpu>=1.8,<2
-fastembed>=0.4.0,<1
+httpx>=0.27
